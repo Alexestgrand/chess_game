@@ -1,0 +1,9 @@
+frontend/
+.git/
+.gitignore
+*.md
+.env
+.env.example
+docker-compose.yml
+.DS_Store
+bin/
