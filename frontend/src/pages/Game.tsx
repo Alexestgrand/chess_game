@@ -19,6 +19,10 @@ export default function Game() {
   const [selectedSquare, setSelectedSquare] = useState<Square | null>(null)
   const [optionSquares, setOptionSquares] = useState<Record<string, { background: string; borderRadius?: string }>>({})
   const [lastMove, setLastMove] = useState<{ from: Square; to: Square } | null>(null)
+  const [whiteTimeLeft, setWhiteTimeLeft] = useState<number>(600)
+  const [blackTimeLeft, setBlackTimeLeft] = useState<number>(600)
+  const [timeControl, setTimeControl] = useState<number>(600)
+  const timerIntervalRef = useRef<number | null>(null)
   const wsClientRef = useRef<WebSocketClient | null>(null)
 
   useEffect(() => {
@@ -35,6 +39,11 @@ export default function Game() {
         setFen(gameData.currentFEN)
         const newChess = new Chess(gameData.currentFEN)
         setChessGame(newChess)
+        
+        // Initialize timers
+        setTimeControl(gameData.timeControl || 600)
+        setWhiteTimeLeft(gameData.whiteTimeLeft || gameData.timeControl || 600)
+        setBlackTimeLeft(gameData.blackTimeLeft || gameData.timeControl || 600)
 
         // Load move history
         const history = await api.getGameHistory(token, gameData.id)
@@ -72,6 +81,9 @@ export default function Game() {
           setFen(msg.fen as string)
           const newChess = new Chess(msg.fen as string)
           setChessGame(newChess)
+          if (msg.timeControl) setTimeControl(msg.timeControl as number)
+          if (msg.whiteTimeLeft !== undefined) setWhiteTimeLeft(msg.whiteTimeLeft as number)
+          if (msg.blackTimeLeft !== undefined) setBlackTimeLeft(msg.blackTimeLeft as number)
           if (msg.status) {
             setGame(prev => prev ? { ...prev, status: msg.status as string } : null)
           }
@@ -81,6 +93,10 @@ export default function Game() {
           const newChess = new Chess(msg.fen as string)
           setChessGame(newChess)
           setMoves(prev => [...prev, move.moveNotation])
+          
+          // Update timers
+          if (msg.whiteTimeLeft !== undefined) setWhiteTimeLeft(msg.whiteTimeLeft as number)
+          if (msg.blackTimeLeft !== undefined) setBlackTimeLeft(msg.blackTimeLeft as number)
           
           // Update last move
           const uci = move.moveNotation
@@ -114,8 +130,49 @@ export default function Game() {
     return () => {
       isMounted = false
       wsClient.disconnect()
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current)
+      }
     }
   }, [token, id])
+
+  // Timer effect
+  useEffect(() => {
+    if (game?.status !== 'active' || game?.result) {
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current)
+        timerIntervalRef.current = null
+      }
+      return
+    }
+
+    timerIntervalRef.current = window.setInterval(() => {
+      const currentTurn = chessGame.turn()
+      if (currentTurn === 'w') {
+        setWhiteTimeLeft(prev => {
+          if (prev <= 1) {
+            // Time's up - white loses
+            return 0
+          }
+          return prev - 1
+        })
+      } else {
+        setBlackTimeLeft(prev => {
+          if (prev <= 1) {
+            // Time's up - black loses
+            return 0
+          }
+          return prev - 1
+        })
+      }
+    }, 1000)
+
+    return () => {
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current)
+      }
+    }
+  }, [game?.status, game?.result, chessGame.turn()])
 
   function getMoveOptions(square: Square) {
     const moves = chessGame.moves({
@@ -242,6 +299,12 @@ export default function Game() {
   const isBlack = game?.blackPlayerId === user?.id
   const isMyTurn = chessGame.turn() === 'w' ? isWhite : isBlack
 
+  function formatTime(seconds: number): string {
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return `${mins}:${secs.toString().padStart(2, '0')}`
+  }
+
   // Highlight last move
   const customSquareStyles: Record<string, { background: string }> = {}
   if (lastMove) {
@@ -294,6 +357,14 @@ export default function Game() {
             </div>
             <div className="turn-info">
               <p>Tour: {chessGame.turn() === 'w' ? '⚪ Blancs' : '⚫ Noirs'}</p>
+              <div className="timers">
+                <div className={`timer ${chessGame.turn() === 'w' ? 'active' : ''}`}>
+                  <span>Blancs: {formatTime(whiteTimeLeft)}</span>
+                </div>
+                <div className={`timer ${chessGame.turn() === 'b' ? 'active' : ''}`}>
+                  <span>Noirs: {formatTime(blackTimeLeft)}</span>
+                </div>
+              </div>
               {chessGame.isCheck() && game?.status === 'active' && (
                 <p className="check-warning">⚠️ Échec !</p>
               )}

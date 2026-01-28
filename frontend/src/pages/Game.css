@@ -104,6 +104,31 @@
   animation: pulse 1.5s infinite;
 }
 
+.timers {
+  display: flex;
+  gap: 16px;
+  margin: 12px 0;
+}
+
+.timer {
+  padding: 8px 16px;
+  border-radius: 8px;
+  background: #f5f5f5;
+  font-weight: 500;
+  transition: all 0.3s;
+}
+
+.timer.active {
+  background: #667eea;
+  color: white;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.timer span {
+  font-family: 'Courier New', monospace;
+  font-size: 16px;
+}
+
 .thinking-indicator {
   color: #667eea;
   font-weight: 500;

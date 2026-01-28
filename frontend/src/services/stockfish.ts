@@ -15,7 +15,7 @@ const DIFFICULTY_DEPTH: Record<number, number> = {
 }
 
 export class StockfishEngine {
-  private stockfish: Worker | null = null
+  private stockfishWorker: Worker | null = null
   private onMoveCallback: ((move: { from: Square; to: Square; promotion?: string }) => void) | null = null
   private difficulty: number = 5
   private isReady: boolean = false
@@ -26,30 +26,31 @@ export class StockfishEngine {
 
   private initStockfish() {
     try {
-      // Use Stockfish WASM from CDN (lichess-org version)
-      // Fallback to local if CDN fails
-      const stockfishUrl = 'https://stockfishjs.org/stockfish.js/stockfish.js'
+      // Use Stockfish API from stockfish.online
+      // This uses a Web Worker approach
+      const stockfishUrl = 'https://stockfish.online/js/stockfish.js'
       
-      this.stockfish = new Worker(stockfishUrl, { type: 'module' })
+      // Try to load Stockfish worker
+      this.stockfishWorker = new Worker(stockfishUrl, { type: 'module' })
       
-      this.stockfish.onmessage = (event) => {
+      this.stockfishWorker.onmessage = (event) => {
         const message = event.data
 
-        if (message === 'uciok') {
+        if (message === 'uciok' || message.includes('uciok')) {
           this.isReady = true
         } else if (message.startsWith('bestmove')) {
           this.handleBestMove(message)
         }
       }
 
-      this.stockfish.onerror = (error) => {
+      this.stockfishWorker.onerror = (error) => {
         console.warn('Stockfish worker failed, using fallback:', error)
         this.isReady = true // Use fallback engine
       }
 
       // Initialize UCI
-      this.stockfish.postMessage('uci')
-      this.stockfish.postMessage('isready')
+      this.stockfishWorker.postMessage('uci')
+      this.stockfishWorker.postMessage('isready')
       
       // Timeout for initialization
       setTimeout(() => {
@@ -90,7 +91,7 @@ export class StockfishEngine {
 
   async calculateMove(fen: string, delay: number = 1000): Promise<{ from: Square; to: Square; promotion?: string }> {
     return new Promise((resolve) => {
-      if (!this.stockfish || !this.isReady) {
+      if (!this.stockfishWorker || !this.isReady) {
         // Fallback to improved random move
         setTimeout(() => resolve(this.getImprovedMove(fen)), delay)
         return
@@ -108,8 +109,8 @@ export class StockfishEngine {
       const depth = DIFFICULTY_DEPTH[this.difficulty]
       
       // Set position and calculate best move
-      this.stockfish.postMessage(`position fen ${fen}`)
-      this.stockfish.postMessage(`go depth ${depth}`)
+      this.stockfishWorker.postMessage(`position fen ${fen}`)
+      this.stockfishWorker.postMessage(`go depth ${depth}`)
 
       // Timeout fallback
       setTimeout(() => {
@@ -167,9 +168,9 @@ export class StockfishEngine {
   }
 
   destroy() {
-    if (this.stockfish) {
-      this.stockfish.terminate()
-      this.stockfish = null
+    if (this.stockfishWorker) {
+      this.stockfishWorker.terminate()
+      this.stockfishWorker = null
     }
     this.isReady = false
   }
