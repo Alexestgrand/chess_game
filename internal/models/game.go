@@ -31,6 +31,10 @@ type Game struct {
 	Status        GameStatus `gorm:"not null;default:'waiting'" json:"status"`
 	Result        GameResult `gorm:"default:''" json:"result"`
 	CurrentFEN    string     `gorm:"type:text;not null" json:"currentFEN"` // Current board state in FEN notation
+	PGN           string     `gorm:"type:text" json:"pgn"`                  // Game notation in PGN format
+	TimeControl   int        `gorm:"default:600" json:"timeControl"`       // Time per player in seconds (default: 10 minutes)
+	WhiteTimeLeft int        `gorm:"default:600" json:"whiteTimeLeft"`      // Time remaining for white in seconds
+	BlackTimeLeft int        `gorm:"default:600" json:"blackTimeLeft"`     // Time remaining for black in seconds
 	CreatedAt     time.Time  `json:"createdAt"`
 	UpdatedAt     time.Time  `json:"updatedAt"`
 

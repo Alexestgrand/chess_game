@@ -92,14 +92,18 @@ func (h *WSHandler) HandleWebSocket(c *gin.Context) {
 
 	// Send initial game state
 	initialState := gin.H{
-		"type":      "game_state",
-		"gameId":    game.ID,
-		"fen":       game.CurrentFEN,
-		"status":    string(game.Status),
-		"result":    string(game.Result),
+		"type":          "game_state",
+		"gameId":        game.ID,
+		"fen":           game.CurrentFEN,
+		"pgn":           game.PGN,
+		"status":        string(game.Status),
+		"result":        string(game.Result),
 		"whitePlayerId": game.WhitePlayerID,
 		"blackPlayerId": game.BlackPlayerID,
-		"isWhite":   isWhite,
+		"timeControl":   game.TimeControl,
+		"whiteTimeLeft": game.WhiteTimeLeft,
+		"blackTimeLeft": game.BlackTimeLeft,
+		"isWhite":       isWhite,
 	}
 	client.Send <- initialState
 
@@ -142,11 +146,14 @@ func (c *Client) readPump(conn *websocket.Conn, service *Service, hub *Hub) {
 				// Broadcast move to all clients
 				game, _ := service.GetGame(c.GameID)
 				moveMsg := gin.H{
-					"type":      "move",
-					"move":      move,
-					"fen":       game.CurrentFEN,
-					"status":    string(game.Status),
-					"result":    string(game.Result),
+					"type":          "move",
+					"move":          move,
+					"fen":           game.CurrentFEN,
+					"pgn":           game.PGN,
+					"status":        string(game.Status),
+					"result":        string(game.Result),
+					"whiteTimeLeft": game.WhiteTimeLeft,
+					"blackTimeLeft": game.BlackTimeLeft,
 				}
 				hub.Broadcast(c.GameID, moveMsg)
 			}

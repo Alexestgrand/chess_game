@@ -149,3 +149,18 @@ func (e *Engine) GetValidMoves() []string {
 	}
 	return moves
 }
+
+// GetPGN returns the game in PGN format
+func (e *Engine) GetPGN() string {
+	return e.game.String()
+}
+
+// GetMoveHistory returns all moves in SAN notation
+func (e *Engine) GetMoveHistory() []string {
+	moves := e.game.Moves()
+	sanMoves := make([]string, len(moves))
+	for i, move := range moves {
+		sanMoves[i] = move.String()
+	}
+	return sanMoves
+}

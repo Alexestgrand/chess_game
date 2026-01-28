@@ -70,9 +70,9 @@ func (m *MatchmakingService) JoinQueue(userID uint, elo int) (*models.Game, erro
 			// Found a match! Remove from queue and create game
 			m.queue = append(m.queue[:i], m.queue[i+1:]...)
 
-			// Create game
+			// Create game with default time control (10 minutes)
 			gameService := NewService(m.db)
-			game, err := gameService.CreateGame(userID)
+			game, err := gameService.CreateGame(userID, 600)
 			if err != nil {
 				return nil, err
 			}

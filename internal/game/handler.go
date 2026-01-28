@@ -25,11 +25,21 @@ func NewHandlerWithMatchmaking(service *Service, matchmakingService *Matchmaking
 	}
 }
 
+type CreateGameRequest struct {
+	TimeControl int `json:"timeControl"` // Time in seconds per player (default: 600 = 10 minutes)
+}
+
 // CreateGame creates a new game
 func (h *Handler) CreateGame(c *gin.Context) {
 	userID := c.MustGet("userID").(uint)
 
-	game, err := h.service.CreateGame(userID)
+	var req CreateGameRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		// Use default if not provided
+		req.TimeControl = 600
+	}
+
+	game, err := h.service.CreateGame(userID, req.TimeControl)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

@@ -33,13 +33,21 @@ func NewService(db *gorm.DB) *Service {
 }
 
 // CreateGame creates a new game
-func (s *Service) CreateGame(whitePlayerID uint) (*models.Game, error) {
+func (s *Service) CreateGame(whitePlayerID uint, timeControl int) (*models.Game, error) {
 	engine := chess.NewEngine()
+	
+	if timeControl <= 0 {
+		timeControl = 600 // Default 10 minutes
+	}
 	
 	game := &models.Game{
 		WhitePlayerID: &whitePlayerID,
 		Status:        models.GameStatusWaiting,
 		CurrentFEN:    engine.GetFEN(),
+		TimeControl:   timeControl,
+		WhiteTimeLeft: timeControl,
+		BlackTimeLeft: timeControl,
+		PGN:           "",
 	}
 
 	if err := s.db.Create(game).Error; err != nil {
@@ -162,6 +170,7 @@ func (s *Service) MakeMove(gameID uint, playerID uint, uci string) (*models.Move
 
 	// Update game state
 	game.CurrentFEN = engine.GetFEN()
+	game.PGN = engine.GetPGN() // Update PGN notation
 	outcomeStr := engine.GetOutcome()
 	if outcomeStr != "" {
 		game.Status = models.GameStatusFinished
